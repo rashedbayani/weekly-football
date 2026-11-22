@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "github": {
+    "owner": "rashedbayani",
+    "repository": "weekly-football",
+    "ownerId": 82253861,
+    "branch": "main",
+    "path": "docs/data/season.json"
+  }
+}
