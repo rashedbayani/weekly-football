@@ -1,46 +1,36 @@
-# Touchline sharing on GitHub Pages
+# Touchline online sharing
 
-This version uses GitHub Pages for free static hosting and a public repository for durable online records. There is no Firebase, Cloudflare, custom server, or paid database. Insights are calculated in Angular.
+Website: https://rashedbayani.github.io/weekly-football/
 
-## Deployment
+The Angular app is hosted on free GitHub Pages (main branch, docs folder). Supabase Free stores records and handles email/password login. All statistics are calculated in the browser. No custom server is needed. The local edition still works independently without internet.
 
-Repository: `rashedbayani/weekly-football`. Live URL: `https://rashedbayani.github.io/weekly-football/`.
+## Administrator
 
-GitHub Pages is configured to deploy from the `main` branch's `/docs` folder. Keep the repository public for GitHub Free hosting. The source app is at the repository root, and the production app is in `docs/`.
+Only rashed.bayani@gmail.com can edit. Use Admin sign in with your email and password. Sessions persist across refreshes; sign out on shared devices. Password setup and recovery links open the app's password form. No GitHub token is needed.
 
-## Administrator sign-in
+Supabase project: stdegteinpejtvsfgjbk, organization Touchline Football. The browser uses the public publishable key in hosting-config.json. Never put a secret or service-role key in the app or repository.
 
-1. Visit the shared website and click **Admin sign in**.
-2. In GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens, create a token for **only** `weekly-football`.
-3. Set **Contents: Read and write**, choose an expiry, and generate it. No other optional permissions are needed.
-4. Paste it into the app's password field. Do not send it through chat, put it in notes, or commit it to the repository.
+Database policies verify the authenticated user against auth.users and require the exact administrator email to be confirmed. Friends browse without accounts. Public users cannot insert, update, or delete records. Public signups should remain disabled after the owner account is provisioned.
 
-Only GitHub account ID `82253861` (`rashedbayani`) is accepted by the app. GitHub itself enforces permission for every write; hiding edit buttons is not the security boundary. Keep the repository without additional write collaborators if only you should edit. Friends do not need accounts or tokens.
+## Saving and backups
 
-The token is held only in the current tab's memory and sent only to `https://api.github.com`. Refreshing the page, closing the tab, or signing out clears it. The app must be signed in again afterward. Revoke or renew it in GitHub's settings whenever needed.
+Saves update the database immediately. Other open pages refresh every minute or with Refresh records. Simultaneous updates use a server-enforced revision condition; stale forms cannot overwrite newer records. After a connection error, refresh to check whether the save completed before retrying. Unsaved forms remain open.
 
-## Weekly use
+All current player and match fields, including notes, are public. A database trigger keeps the previous 100 revisions in a private history table. Keep regular JSON exports through Backup & data as an independent backup. Local records are never uploaded automatically; import a reviewed local backup while signed in to publish it.
 
-Add players, record the two lineups and score, then save. GitHub confirms each save before the app reports success. Friends see the new records after GitHub Pages publishes the update, usually within a few minutes. Their page checks for changes every minute while visible; **Refresh records** checks immediately. The administrator reads the latest saved version directly from GitHub.
+The old docs/data/season.json is retained only as a migration archive and is no longer used by the app. Rebuilding the website does not overwrite Supabase records.
 
-All online fields, including notes, are public, and earlier records remain in Git history. Use notes only for information intended to be shared. The site starts with an empty season; local records are never uploaded automatically.
+## Free plan
 
-To migrate a local season, open the original local address, download a JSON backup, sign in on the shared website, then use **Backup & data** to import and confirm replacement. Review the backup's notes before publishing. Keep periodic JSON backups even though GitHub stores version history.
-
-Conflicting edits from another tab are rejected. Close the stale form, click Refresh records, and enter the change again. After a timeout, refresh before retrying to see whether GitHub accepted the save. Browser-side size limits keep the saved file below GitHub's supported Contents API inline-read size.
+Supabase may pause free projects after a week of inactivity. Resume the project from its dashboard if needed. Free service limits and availability can change; no paid plan was enabled. Password email delivery also depends on the provider's limits.
 
 ## Rebuilding
 
-```powershell
-npm install
-npm test
-npx ng build --configuration production --base-href ./
-npm run prepare:pages
-```
+Use Node.js 24 and the included pnpm lockfile. Install dependencies, run npm test, then:
 
-`prepare:pages` copies built assets to `docs/`, adds sharing configuration, and creates an empty data file only if none exists. It never replaces an existing `docs/data/season.json`. Before publishing a rebuild, pull the latest repository changes so you keep all online records, and commit only the intended code and generated assets. Do not overwrite the online data file with an old local copy.
+    npx ng build --configuration production --base-href ./
+    npm run prepare:pages
 
-The local production launcher continues to use browser storage and `public/cloud-config.json` stays disabled. Only the prepared `docs/` build enables sharing.
+The preparation script copies the production assets and public hosting configuration into docs. Commit the updated source and generated assets to main. GitHub Pages publishes the new build. public/cloud-config.json remains disabled so the local launcher continues using browser storage.
 
-References: [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages), [repository Contents API](https://docs.github.com/en/rest/repos/contents), [fine-grained tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
-
+The applied database schema is in supabase/schema.sql. Configure the Auth Site URL and allowed redirect to https://rashedbayani.github.io/weekly-football/. Do not reset the season table during a code deployment.

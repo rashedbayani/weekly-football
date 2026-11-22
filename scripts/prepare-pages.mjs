@@ -11,7 +11,9 @@ for(const entry of await readdir(source,{withFileTypes:true})){
  await cp(path.join(source,entry.name),path.join(destination,entry.name),{recursive:true});
 }
 await writeFile(path.join(destination,'.nojekyll'),'');
-await writeFile(path.join(destination,'cloud-config.json'),JSON.stringify({enabled:true,github:{owner:'rashedbayani',repository:'weekly-football',ownerId:82253861,branch:'main',path:'docs/data/season.json'}},null,2)+'\n');
+const config=JSON.parse(await readFile(path.join(root,'hosting-config.json'),'utf8'));
+if(!config.enabled || !config.supabase?.publishableKey?.startsWith('sb_publishable_'))throw new Error('A public Supabase configuration is required. Never use a secret key.');
+await writeFile(path.join(destination,'cloud-config.json'),JSON.stringify(config,null,2)+'\n');
 await mkdir(path.join(destination,'data'),{recursive:true});
 // Never replace existing season data when rebuilding the app.
 try{await writeFile(path.join(destination,'data/season.json'),JSON.stringify({payload:JSON.stringify({version:1,players:[],matches:[]}),revision:1})+'\n',{flag:'wx'});}catch(error){if(error.code!=='EEXIST')throw error;}

@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "supabase": {
+    "url": "https://stdegteinpejtvsfgjbk.supabase.co",
+    "publishableKey": "sb_publishable_E7pQoIkWq5og8EV6yYCyfA_sRgldMoo"
+  }
+}

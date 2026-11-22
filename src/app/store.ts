@@ -1,9 +1,7 @@
 import { computed, Injectable, signal } from '@angular/core';
 import { Data, emptyData, validateData } from './domain';
-import { assertRevision, decodeRecord, encodeData } from './cloud-data';
-import { GithubData } from './github-data';
-import type { GithubRecord } from './github-data';
-
+import { assertRevision } from './cloud-data';
+import { SupabaseData } from './supabase-data';
 const KEY='touchline.data.v1';
 @Injectable({providedIn:'root'})
 export class Store {
@@ -14,67 +12,83 @@ export class Store {
  readonly saving=signal(false);
  readonly signingIn=signal(false);
  readonly admin=signal(false);
- readonly user=signal<{login:string}|null>(null);
+ readonly user=signal<{email:string}|null>(null);
  readonly revision=signal(0);
  readonly connection=signal('Connecting…');
+ readonly passwordRecovery=signal(false);
  readonly canEdit=computed(()=>this.ready() && (this.mode()==='local' || this.admin()));
  readonly role=computed(()=>this.mode()==='local'?'Local notebook':this.admin()?'Administrator':'View only');
- private github?:GithubData;
- private sha='';
+ private database?:SupabaseData;
  private generation=0;
  private refreshing=false;
  private blocked=false;
  private localRaw:string|null=null;
  constructor(){void this.initialize();}
  private async initialize(){
-  try {
-   const response=await fetch(new URL('cloud-config.json',document.baseURI),{cache:'no-store',signal:AbortSignal.timeout(15000)});
+  try{
+   const response=await fetch(new URL('cloud-config.json',document.baseURI),{cache:'no-store',signal:AbortSignal.timeout(20000)});
    if(!response.ok)throw new Error('The app configuration could not be loaded.');
    const config=await response.json();
    if(!config.enabled){
     if(!['127.0.0.1','localhost','[::1]'].includes(location.hostname))throw new Error('Online sharing has not been configured. Editing is disabled until setup is complete.');
     this.mode.set('local');this.loadLocal();return;
    }
-   this.github=new GithubData(config.github);this.mode.set('cloud');await this.refresh();
+   const type=new URLSearchParams(location.hash.slice(1)).get('type');
+   this.passwordRecovery.set(type==='invite' || type==='recovery');
+   this.database=new SupabaseData(config.supabase);this.mode.set('cloud');
+   this.database.client.auth.onAuthStateChange(event=>{
+    if(event==='PASSWORD_RECOVERY')this.passwordRecovery.set(true);
+    if(event==='SIGNED_OUT'){this.generation++;this.admin.set(false);this.user.set(null);this.passwordRecovery.set(false);}
+    // Keep database requests outside the auth callback's lock.
+    if(event==='SIGNED_IN' || event==='SIGNED_OUT' || event==='TOKEN_REFRESHED')setTimeout(()=>void this.refresh(),0);
+   });
+   await this.refresh();
    setInterval(()=>{if(!document.hidden)void this.refresh();},60000);
    window.addEventListener('online',()=>void this.refresh());
    document.addEventListener('visibilitychange',()=>{if(!document.hidden)void this.refresh();});
   }catch(e){this.mode.set('unconfigured');this.connection.set('Setup required');this.error.set(this.message(e));}
  }
  private loadLocal(){
-  try{this.localRaw=localStorage.getItem(KEY);if(this.localRaw){const parsed:unknown=JSON.parse(this.localRaw);validateData(parsed);this.data.set(parsed);}}
+  try{this.localRaw=localStorage.getItem(KEY);if(this.localRaw){const value:unknown=JSON.parse(this.localRaw);validateData(value);this.data.set(value);}}
   catch{this.blocked=true;this.error.set('Saved local data could not be read. Export it before restoring a valid backup. Existing storage has not been overwritten.');}
   this.ready.set(true);this.connection.set('Saved on this device');
  }
- private apply(record:GithubRecord){this.data.set(record.data);this.revision.set(record.revision);this.sha=record.sha;this.ready.set(true);}
  async refresh(){
-  if(this.mode()!=='cloud' || this.refreshing || this.saving() || this.signingIn())return;
+  if(!this.database || this.refreshing || this.saving() || this.signingIn())return;
   this.refreshing=true;const generation=this.generation;
   try{
-   if(this.admin()){
-    const record=await this.github!.read();if(generation!==this.generation)return;this.apply(record);
-   }else{
-    const url=new URL('data/season.json',document.baseURI);url.searchParams.set('v',String(Date.now()));
-    const response=await fetch(url,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(15000)});
-    if(!response.ok)throw new Error('Shared records are temporarily unavailable. Please try Refresh records again.');
-    const record=decodeRecord(await response.json());if(generation!==this.generation)return;
-    if(record.revision>=this.revision()){this.data.set(record.data);this.revision.set(record.revision);}
-    this.ready.set(true);
-   }
-   this.connection.set(this.admin()?'Saved online · public updates may take a few minutes':'Published records · refreshes every minute');this.error.set('');
+   const identity=await this.database.identity();
+   const record=await this.database.read();
+   if(generation!==this.generation)return;
+   this.user.set(identity);this.admin.set(!!identity);this.data.set(record.data);this.revision.set(record.revision);this.ready.set(true);
+   this.connection.set('Saved online · refreshes every minute');this.error.set('');
   }catch(e){if(generation!==this.generation)return;this.ready.set(false);this.connection.set('Connection unavailable · retrying');this.error.set(this.message(e));}
   finally{this.refreshing=false;}
  }
- async signIn(token:string):Promise<boolean>{
-  if(!this.github || this.signingIn())return false;
+ async signIn(email:string,password:string):Promise<boolean>{
+  if(!this.database || this.signingIn())return false;
   this.signingIn.set(true);this.generation++;this.error.set('');
   try{
-   const record=await this.github.signIn(token);this.apply(record);this.admin.set(true);this.user.set({login:this.github.config.owner});this.connection.set('Saved online · public updates may take a few minutes');return true;
+   const identity=await this.database.signIn(email,password);
+   const record=await this.database.read();
+   this.user.set(identity);this.admin.set(true);this.data.set(record.data);this.revision.set(record.revision);this.ready.set(true);this.connection.set('Saved online');return true;
   }catch(e){this.error.set(this.message(e));return false;}finally{this.signingIn.set(false);}
  }
  async signOut(){
-  if(this.saving())return;this.generation++;this.github?.signOut();this.admin.set(false);this.user.set(null);this.sha='';this.ready.set(false);this.data.set(emptyData());this.revision.set(0);
+  if(this.saving() || !this.database)return;
+  this.generation++;this.admin.set(false);this.user.set(null);this.passwordRecovery.set(false);
+  try{await this.database.signOut();}catch(e){this.error.set(this.message(e));}
   await this.refresh();
+ }
+ async resetPassword(email:string):Promise<boolean>{
+  if(!this.database || this.signingIn())return false;
+  this.signingIn.set(true);
+  try{await this.database.resetPassword(email,location.origin+location.pathname);return true;}catch(e){this.error.set(this.message(e));return false;}finally{this.signingIn.set(false);}
+ }
+ async updatePassword(password:string):Promise<boolean>{
+  if(!this.database || this.signingIn())return false;
+  this.signingIn.set(true);
+  try{await this.database.updatePassword(password);this.passwordRecovery.set(false);return true;}catch(e){this.error.set(this.message(e));return false;}finally{this.signingIn.set(false);}
  }
  async save(data:Data,recovery=false,expectedRevision=this.revision()):Promise<boolean>{
   if(!this.canEdit()){this.error.set('Only the administrator can change the shared records.');return false;}
@@ -89,16 +103,19 @@ export class Store {
     const raw=JSON.stringify(data);localStorage.setItem(KEY,raw);this.localRaw=raw;this.data.set(data);this.blocked=false;this.revision.update(n=>n+1);
    }else{
     if(!navigator.onLine)throw new Error('You are offline. Reconnect before saving; your form is still here.');
-    encodeData(data);
-    this.apply(await this.github!.save(data,expectedRevision,this.sha));this.connection.set('Saved online · public updates may take a few minutes');
+    const record=await this.database!.save(data,expectedRevision);this.data.set(record.data);this.revision.set(record.revision);this.connection.set('Saved online');
    }
    this.error.set('');return true;
   }catch(e){this.error.set(this.message(e));return false;}finally{this.saving.set(false);}
  }
  raw(){return this.mode()==='local'?(localStorage.getItem(KEY)??JSON.stringify(this.data())):JSON.stringify(this.data());}
  private message(e:unknown):string{
-  if(e instanceof Error && e.name==='QuotaExceededError')return 'Browser storage is full. Download a backup before clearing storage.';
-  if(e instanceof TypeError || (e instanceof Error && ['TimeoutError','AbortError'].includes(e.name)))return 'The online service could not be reached. Check your connection and refresh the records to check whether the last save completed. Your unsaved form is still here.';
-  return e instanceof Error?e.message:'The operation could not be completed.';
+  const error=e as {name?:string;code?:string;message?:string};
+  if(error.code==='invalid_credentials')return 'The email or password is incorrect.';
+  if(error.code==='email_not_confirmed')return 'Confirm your email using the link in your inbox, then sign in.';
+  if(error.code==='42501')return 'Only the verified organizer account may change these records.';
+  if(error.name==='QuotaExceededError')return 'Browser storage is full. Download a backup before clearing storage.';
+  if(e instanceof TypeError || ['TimeoutError','AbortError','AuthRetryableFetchError'].includes(error.name || ''))return 'The database could not be reached. Check your connection and try again. If it was paused by the free host, resume it in Supabase. Your form is still here.';
+  return typeof error.message==='string'?error.message:'The operation could not be completed.';
  }
 }

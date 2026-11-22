@@ -3,4 +3,5 @@
 /.angular
 /out-tsc
 /.pnpm-store
+/.pnpm-cache
 *.log

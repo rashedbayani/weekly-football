@@ -1,10 +1,10 @@
 # Touchline — weekly football
 
-A standalone Angular 22 app for a weekly football group. Add players once, choose the two lineups each week, and enter the final score. All insights recalculate when a result is added, edited, or deleted. The local edition needs no backend. The shared edition uses GitHub Pages and saves records in a GitHub repository, with editing restricted by GitHub repository permissions.
+A standalone Angular 22 app for a weekly football group. Add players once, choose the two lineups each week, and enter the final score. All insights recalculate when a result is added, edited, or deleted. The local edition needs no backend. The shared edition uses GitHub Pages hosting and Supabase for email/password authentication and online records. Database policies restrict editing to the verified organizer.
 
 ## Shared website
 
-The live website is [Touchline](https://rashedbayani.github.io/weekly-football/). See CLOUD-SETUP.md for deployment status, administrator sign-in, and publishing instructions. Friends browse without signing in. Online records and their history, including notes, are public. Only the repository owner receives editing credentials.
+The live website is [Touchline](https://rashedbayani.github.io/weekly-football/). See CLOUD-SETUP.md for deployment status, administrator sign-in, and publishing instructions. Friends browse without signing in. Current online records, including notes, are public. Only the verified organizer can edit; revision history is private.
 
 ## Run the local app
 
@@ -50,7 +50,6 @@ npm test
 
 `npm start` serves the development app at `http://127.0.0.1:4200`. Stop the finished-app launcher before starting development, since they use the same port. After source changes, rebuild before using the finished-app launcher.
 
-The project uses Angular standalone components and signals. `src/app/domain.ts` contains pure validation and calculations, `store.ts` handles local storage and online records, `github-data.ts` checks the administrator identity and saves with conflict protection, and `app.ts` / `app.html` implement the UI. Tests use Node's built-in test runner and TypeScript stripping. No chart, styling, or external font service is required.
+The project uses Angular standalone components and signals. `src/app/domain.ts` contains pure validation and calculations, `store.ts` handles local storage and online records, `supabase-data.ts` handles email/password authentication and saves with conflict protection, and `app.ts` / `app.html` implement the UI. Tests use Node's built-in test runner and TypeScript stripping. No chart, styling, or external font service is required.
 
 Reference: [Angular local setup](https://angular.dev/tools/cli/setup-local).
-

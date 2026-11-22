@@ -6,10 +6,11 @@
   "scripts": {
     "start": "ng serve --host 127.0.0.1 --port 4200",
     "build": "ng build",
-    "test": "node --experimental-strip-types --test src/app/domain.test.ts src/app/cloud-data.test.ts src/app/github-data.test.ts",
+    "test": "node --experimental-strip-types --test src/app/domain.test.ts src/app/cloud-data.test.ts src/app/supabase-data.test.ts",
     "prepare:pages": "node scripts/prepare-pages.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.119.2",
     "@angular/common": "22.2.5",
     "@angular/compiler": "22.2.5",
     "@angular/core": "22.2.5",

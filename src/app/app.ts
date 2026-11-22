@@ -17,7 +17,7 @@ export class App {
  page = signal<Page>('Overview');
  search = ''; matchSearch = ''; sort = 'wins'; minGames = 1; showArchived = false;
  notice = signal(''); formError = ''; modal: 'player'|'match'|'profile'|'matchView'|'login'|null = null;
- adminToken='';
+ adminEmail='rashed.bayani@gmail.com';adminPassword='';loginMessage='';newPassword='';repeatPassword='';
  private draftRevision=0; private importRevision=0;
  playerDraft: Player = this.blankPlayer(); matchDraft: Match = this.blankMatch();
  assignments: Record<string,string> = {}; goals: Record<string,number> = {}; assists: Record<string,number> = {};
@@ -40,7 +40,7 @@ export class App {
  get selectablePlayers() { return this.data().players.filter(p=>p.active || this.assignments[p.id]); }
  count(side:string) { return Object.values(this.assignments).filter(v=>v===side).length; }
  open(type:'player'|'match'|'profile'|'matchView'|'login') { this.formError=''; this.modal=type; this.dialog.nativeElement.showModal(); }
- close() { this.adminToken=''; this.dialog.nativeElement.close(); this.modal=null; }
+ close() { this.adminPassword=''; this.dialog.nativeElement.close(); this.modal=null; }
  editPlayer(player?:Player) { if(!this.store.canEdit())return;this.draftRevision=this.store.revision();this.playerDraft=player?structuredClone(player):this.blankPlayer(); this.open('player'); }
  async savePlayer() {
   if(!this.store.canEdit() || this.store.saving())return;
@@ -78,7 +78,9 @@ export class App {
  async restore() {if(this.pendingImport && await this.store.save(this.pendingImport,true,this.importRevision)){this.pendingImport=null;this.notice.set('Backup restored successfully.');}}
  async loadDemo() {if(this.store.mode()==='local' && !this.data().players.length && !this.data().matches.length && await this.store.save(demoData()))this.notice.set('Sample season loaded. You can remove it in Backup & data.');}
  async clearDemo() {if(!this.data().players.every(p=>p.id.startsWith('demo-')) || !this.data().matches.every(m=>m.id.startsWith('demo-'))) {this.notice.set('Your own records are present, so sample data cannot be cleared automatically.');return;}if(confirm('Remove the sample season?') && await this.store.save({version:1,players:[],matches:[]}))this.notice.set('Sample season removed. Ready for your players.');}
- async login(){const token=this.adminToken;this.adminToken='';if(await this.store.signIn(token)){this.close();this.notice.set('Administrator access enabled for this tab.');}else this.formError=this.store.error();}
+ async login(){const password=this.adminPassword;this.adminPassword='';if(await this.store.signIn(this.adminEmail,password)){this.close();this.notice.set('You are signed in as administrator.');}else this.formError=this.store.error();}
+ async forgotPassword(){this.formError='';this.loginMessage='';if(await this.store.resetPassword(this.adminEmail))this.loginMessage='Check your email for a password reset link.';else this.formError=this.store.error();}
+ async changePassword(){if(this.newPassword!==this.repeatPassword){this.notice.set('The passwords do not match.');return;}if(await this.store.updatePassword(this.newPassword)){this.newPassword='';this.repeatPassword='';this.notice.set('Password saved. You are ready to record matches.');}}
  async signOut(){this.pendingImport=null;this.page.set('Overview');await this.store.signOut();}
  async share(){try{await navigator.clipboard.writeText(location.origin+location.pathname);this.notice.set('View-only link copied. Your friends can open it without signing in.');}catch{this.notice.set('Share this address: '+location.origin+location.pathname);}}
  get onlyDemo() {return this.data().players.length>0 && this.data().players.every(p=>p.id.startsWith('demo-')) && this.data().matches.every(m=>m.id.startsWith('demo-'));}
