@@ -4,9 +4,9 @@ This version uses GitHub Pages for free static hosting and a public repository f
 
 ## Deployment
 
-Repository: `rashedbayani/weekly-football`. Intended URL: `https://rashedbayani.github.io/weekly-football/`.
+Repository: `rashedbayani/weekly-football`. Live URL: `https://rashedbayani.github.io/weekly-football/`.
 
-Deploy from the `main` branch's `/docs` folder in repository Settings → Pages. Keep the repository public for GitHub Free hosting. The source app is at the repository root, and the production app is in `docs/`.
+GitHub Pages is configured to deploy from the `main` branch's `/docs` folder. Keep the repository public for GitHub Free hosting. The source app is at the repository root, and the production app is in `docs/`.
 
 ## Administrator sign-in
 
@@ -43,3 +43,4 @@ npm run prepare:pages
 The local production launcher continues to use browser storage and `public/cloud-config.json` stays disabled. Only the prepared `docs/` build enables sharing.
 
 References: [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages), [repository Contents API](https://docs.github.com/en/rest/repos/contents), [fine-grained tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
+
