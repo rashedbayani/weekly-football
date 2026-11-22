@@ -2533,24 +2533,6 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@firebase/analytics-types@0.8.5': {}
-
-  '@firebase/app-check-interop-types@0.3.5': {}
-
-  '@firebase/app-check-types@0.5.5': {}
-
-  '@firebase/auth-interop-types@0.2.6': {}
-
-  '@firebase/functions-types@0.6.5': {}
-
-  '@firebase/messaging-interop-types@0.2.6': {}
-
-  '@firebase/performance-types@0.2.5': {}
-
-  '@firebase/remote-config-types@0.5.2': {}
-
-  '@firebase/webchannel-wrapper@1.0.7': {}
-
   '@grpc/grpc-js@1.9.16':
     dependencies:
       '@grpc/proto-loader': 0.7.15
@@ -4049,3 +4031,4 @@ snapshots:
   zod@4.6.6: {}
 
   zod@4.6.7: {}
+
