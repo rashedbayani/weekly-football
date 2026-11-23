@@ -1,9 +1,12 @@
+import {createInitialPayments,validatePayments} from './payments.ts';
+import type {PaymentLedger} from './payments.ts';
 export const POSITIONS = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward', 'Any position'] as const;
 export interface Player { id: string; name: string; position: string; notes: string; active: boolean; }
 export interface Appearance { playerId: string; goals: number; assists: number; }
 export interface Team { name: string; score: number; players: Appearance[]; }
 export interface Match { id: string; date: string; venue: string; notes: string; a: Team; b: Team; }
-export interface Data { version: 1; players: Player[]; matches: Match[]; }
+export interface Data { version: 1; players: Player[]; matches: Match[]; payments?:PaymentLedger; }
+export function withPaymentDefaults(data:Data):Data {return {...data,payments:data.payments??createInitialPayments()};}
 export interface Stats { player: Player; played: number; wins: number; draws: number; losses: number; goals: number; assists: number; goalDifference: number; winRate: number; attendance: number; currentWinStreak: number; bestWinStreak: number; form: string[]; }
 export const emptyData = (): Data => ({ version: 1, players: [], matches: [] });
 export const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
@@ -13,6 +16,7 @@ export function validateData(value: unknown): asserts value is Data {
  const d = value as Data;
  if (!d || d.version !== 1 || !Array.isArray(d.players) || !Array.isArray(d.matches)) throw new Error('This is not a supported Touchline backup.');
  if (d.players.length > 2000 || d.matches.length > 10000) throw new Error('This backup exceeds the supported size.');
+ if(d.payments!==undefined)validatePayments(d.payments);
  const ids = new Set<string>();
  for (const p of d.players) {
   if (!p || !text(p.id,100,true) || ids.has(p.id) || !text(p.name,60,true) || !POSITIONS.includes(p.position as typeof POSITIONS[number]) || !text(p.notes,500) || typeof p.active !== 'boolean') throw new Error('A player record is invalid or duplicated.');

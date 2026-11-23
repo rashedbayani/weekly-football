@@ -22,6 +22,14 @@ Always use this same browser and address. Browser storage is specific to an orig
 
 Use **Matches** to search by team, player, venue, or date and correct old results. Archive players to hide them from new lineups while preserving their history. Importing a backup replaces the current dataset only after a separate review action. The empty overview offers an optional sample season; it is never loaded automatically.
 
+## Payments
+
+Open **Payments** to view the ledger imported from سالن.xlsx: 17 members and 25 weeks. Amounts are in **thousand tomans** (150 = 150,000 tomans). The signed-in administrator can edit weekly charges, each member's total paid, and the total paid to the hall, and add or remove weeks and payment members. Choose **Save payments** to publish changes; everyone can view the table without signing in.
+
+Each member's balance is total paid minus charges across **all weeks**. Cash remaining is total collected minus total paid to the hall. Empty cells stay blank and are distinct from zero. Totals update while editing. Payment members are maintained separately from football players so changes to match lineups do not alter the ledger.
+
+JSON backups include payments. Restoring an older backup without a payment table preserves the current ledger. The initial spreadsheet is bundled with the app; when an existing season has no payment ledger yet, the next administrator save stores it alongside the online season. Local saves stay in the current browser.
+
 ## Insights and definitions
 
 - **Wins / draws / losses:** the player's team's result in each appearance, independent of team name or teammates.

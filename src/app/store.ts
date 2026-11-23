@@ -1,11 +1,11 @@
 import { computed, Injectable, signal } from '@angular/core';
-import { Data, emptyData, validateData } from './domain';
+import { Data, emptyData, validateData, withPaymentDefaults } from './domain';
 import { assertRevision } from './cloud-data';
 import { SupabaseData } from './supabase-data';
 const KEY='touchline.data.v1';
 @Injectable({providedIn:'root'})
 export class Store {
- readonly data=signal<Data>(emptyData());
+ readonly data=signal<Data>(withPaymentDefaults(emptyData()));
  readonly error=signal('');
  readonly mode=signal<'loading'|'local'|'cloud'|'unconfigured'>('loading');
  readonly ready=signal(false);
@@ -49,7 +49,7 @@ export class Store {
   }catch(e){this.mode.set('unconfigured');this.connection.set('Setup required');this.error.set(this.message(e));}
  }
  private loadLocal(){
-  try{this.localRaw=localStorage.getItem(KEY);if(this.localRaw){const value:unknown=JSON.parse(this.localRaw);validateData(value);this.data.set(value);}}
+  try{this.localRaw=localStorage.getItem(KEY);if(this.localRaw){const value:unknown=JSON.parse(this.localRaw);validateData(value);this.data.set(withPaymentDefaults(value));}}
   catch{this.blocked=true;this.error.set('Saved local data could not be read. Export it before restoring a valid backup. Existing storage has not been overwritten.');}
   this.ready.set(true);this.connection.set('Saved on this device');
  }
@@ -60,7 +60,7 @@ export class Store {
    const identity=await this.database.identity();
    const record=await this.database.read();
    if(generation!==this.generation)return;
-   this.user.set(identity);this.admin.set(!!identity);this.data.set(record.data);this.revision.set(record.revision);this.ready.set(true);
+   this.user.set(identity);this.admin.set(!!identity);this.data.set(withPaymentDefaults(record.data));this.revision.set(record.revision);this.ready.set(true);
    this.connection.set('Saved online · refreshes every minute');this.error.set('');
   }catch(e){if(generation!==this.generation)return;this.ready.set(false);this.connection.set('Connection unavailable · retrying');this.error.set(this.message(e));}
   finally{this.refreshing=false;}
@@ -71,7 +71,7 @@ export class Store {
   try{
    const identity=await this.database.signIn(email,password);
    const record=await this.database.read();
-   this.user.set(identity);this.admin.set(true);this.data.set(record.data);this.revision.set(record.revision);this.ready.set(true);this.connection.set('Saved online');return true;
+   this.user.set(identity);this.admin.set(true);this.data.set(withPaymentDefaults(record.data));this.revision.set(record.revision);this.ready.set(true);this.connection.set('Saved online');return true;
   }catch(e){this.error.set(this.message(e));return false;}finally{this.signingIn.set(false);}
  }
  async signOut(){
@@ -95,6 +95,7 @@ export class Store {
   if(this.saving())return false;
   this.saving.set(true);this.generation++;
   try{
+   data=withPaymentDefaults({...data,payments:data.payments??this.data().payments});
    validateData(data);
    if(this.mode()==='local'){
     if(this.blocked && !recovery)throw new Error('Restore a valid backup before saving changes.');
@@ -103,12 +104,12 @@ export class Store {
     const raw=JSON.stringify(data);localStorage.setItem(KEY,raw);this.localRaw=raw;this.data.set(data);this.blocked=false;this.revision.update(n=>n+1);
    }else{
     if(!navigator.onLine)throw new Error('You are offline. Reconnect before saving; your form is still here.');
-    const record=await this.database!.save(data,expectedRevision);this.data.set(record.data);this.revision.set(record.revision);this.connection.set('Saved online');
+    const record=await this.database!.save(data,expectedRevision);this.data.set(withPaymentDefaults(record.data));this.revision.set(record.revision);this.connection.set('Saved online');
    }
    this.error.set('');return true;
   }catch(e){this.error.set(this.message(e));return false;}finally{this.saving.set(false);}
  }
- raw(){return this.mode()==='local'?(localStorage.getItem(KEY)??JSON.stringify(this.data())):JSON.stringify(this.data());}
+ raw(){return this.mode()==='local' && this.blocked?(localStorage.getItem(KEY)??JSON.stringify(this.data())):JSON.stringify(this.data());}
  private message(e:unknown):string{
   const error=e as {name?:string;code?:string;message?:string};
   if(error.code==='invalid_credentials')return 'The email or password is incorrect.';

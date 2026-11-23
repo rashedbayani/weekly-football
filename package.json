@@ -6,7 +6,7 @@
   "scripts": {
     "start": "ng serve --host 127.0.0.1 --port 4200",
     "build": "ng build",
-    "test": "node --experimental-strip-types --test src/app/domain.test.ts src/app/cloud-data.test.ts src/app/supabase-data.test.ts",
+    "test": "node --experimental-strip-types --test src/app/domain.test.ts src/app/cloud-data.test.ts src/app/supabase-data.test.ts src/app/payments.test.ts",
     "prepare:pages": "node scripts/prepare-pages.mjs"
   },
   "dependencies": {

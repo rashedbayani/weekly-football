@@ -16,7 +16,7 @@ Database policies verify the authenticated user against auth.users and require t
 
 Saves update the database immediately. Other open pages refresh every minute or with Refresh records. Simultaneous updates use a server-enforced revision condition; stale forms cannot overwrite newer records. After a connection error, refresh to check whether the save completed before retrying. Unsaved forms remain open.
 
-All current player and match fields, including notes, are public. A database trigger keeps the previous 100 revisions in a private history table. Keep regular JSON exports through Backup & data as an independent backup. Local records are never uploaded automatically; import a reviewed local backup while signed in to publish it.
+All current player, match, and payment fields, including notes, are public. Payments share the same protected season record and revision checks; no extra database table or policy is required. A database trigger keeps the previous 100 revisions in a private history table. Keep regular JSON exports through Backup & data as an independent backup. Local records are never uploaded automatically; import a reviewed local backup while signed in to publish it.
 
 The old docs/data/season.json is retained only as a migration archive and is no longer used by the app. Rebuilding the website does not overwrite Supabase records.
 

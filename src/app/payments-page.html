@@ -1,0 +1,62 @@
+@if(store.ready() || draft()){
+ <div class="payment-toolbar">
+  <div><strong dir="auto">واحد مبالغ: هزار تومان</strong><p>150 means 150,000 tomans. Blank cells are not entered; zero is a recorded zero.</p></div>
+  <div class="payment-actions">
+   @if(draft()){
+    <span class="edit-status">{{dirty()?'Unsaved changes':'Editing table'}}</span>
+    <button class="secondary" (click)="cancel()" [disabled]="store.saving()">Cancel</button>
+    <button class="primary" (click)="save()" [disabled]="!store.canEdit() || store.saving()">{{store.saving()?'Saving…':'Save payments'}}</button>
+   }@else if(store.canEdit()){
+    <button class="primary" (click)="edit()">Edit payments</button>
+   }@else{<span class="season-tag">VIEW ONLY</span>}
+  </div>
+ </div>
+ @if(message()){<p class="alert" role="status">{{message()}}</p>}
+ @if(error()){<p class="alert error" role="alert">{{error()}} Your draft is still here.</p>}
+ @if(draft() && store.revision()!==revision){<p class="alert error">Shared records changed while you were editing. Cancel and reopen the table to use the latest version before saving.</p>}
+ <div class="payment-summary" aria-label="Payment totals">
+  <article><span dir="auto">جمع پرداختی بازیکنان</span><strong>{{format(totals().paid)}}</strong><small>Total paid by players</small></article>
+  <article><span dir="auto">پرداختی کل به سالن</span><strong>{{format(ledger().venuePaid)}}</strong><small>Total paid to the hall</small></article>
+  <article [class.negative]="(totals().cash??0)<0"><span dir="auto">موجودی صندوق</span><strong>{{format(totals().cash)}}</strong><small>Player payments − hall payments</small></article>
+ </div>
+ @if(draft()){
+  <div class="payment-edit-tools">
+   <button class="secondary" (click)="addWeek()" [disabled]="!store.canEdit() || store.saving() || ledger().weeks.length>=500">＋ Add week</button>
+   <button class="secondary" (click)="addMember()" [disabled]="!store.canEdit() || store.saving() || ledger().members.length>=100">＋ Add payment player</button>
+   <label>Total paid to hall <span dir="auto">(هزار تومان)</span><input aria-label="Total paid to hall" type="number" min="0" max="1000000000" step="0.01" [ngModel]="ledger().venuePaid" (ngModelChange)="setVenuePaid($event)" [disabled]="!store.canEdit() || store.saving()"></label>
+  </div>
+ }
+ <section class="panel payment-panel">
+  <div class="section-heading"><h2>دفتر پرداخت‌ها</h2><span class="muted">{{ledger().weeks.length}} weeks · {{ledger().members.length}} players</span></div>
+  <div class="payment-scroll" tabindex="0" role="region" aria-label="Weekly payment table. Scroll horizontally for all players.">
+   <table class="payment-table">
+    <caption>Weekly charges, paid amounts, and remaining balances — thousand tomans</caption>
+    <thead><tr><th scope="col" class="date-column">تاریخ</th>
+     @for(member of ledger().members;track member.id){<th scope="col">
+      @if(draft()){
+       <div class="editable-heading"><input [id]="'payment-member-'+member.id" [attr.aria-label]="'Player name '+member.name" dir="auto" maxlength="60" [ngModel]="member.name" (ngModelChange)="setName(member.id,$event)" [disabled]="!store.canEdit() || store.saving()"><button class="remove-entry" [attr.aria-label]="'Remove payment player '+member.name" (click)="removeMember(member.id)" [disabled]="!store.canEdit() || store.saving()">×</button></div>
+      }@else{<span dir="auto">{{member.name}}</span>}
+     </th>}
+     <th scope="col" class="total-column">جمع</th></tr></thead>
+    <tbody>
+     @for(week of ledger().weeks;track week.id){<tr>
+      <th scope="row" class="date-column">@if(draft()){
+       <div class="editable-date"><input [id]="'payment-week-'+week.id" [attr.aria-label]="'Week date '+week.date" dir="auto" maxlength="40" placeholder="مثلاً ۲۹ اسفند" [ngModel]="week.date" (ngModelChange)="setDate(week.id,$event)" [disabled]="!store.canEdit() || store.saving()"><button class="remove-entry" [attr.aria-label]="'Remove week '+week.date" (click)="removeWeek(week.id)" [disabled]="!store.canEdit() || store.saving()">×</button></div>
+      }@else{<span dir="auto">{{week.date}}</span>}</th>
+      @for(member of ledger().members;track member.id){<td [class.blank]="week.amounts[member.id]===null" [class.zero]="week.amounts[member.id]===0">
+       @if(draft()){<input type="number" min="0" max="1000000000" step="0.01" placeholder="—" [attr.aria-label]="week.date+' — '+member.name" [ngModel]="week.amounts[member.id]" (ngModelChange)="setAmount(week.id,member.id,$event)" [disabled]="!store.canEdit() || store.saving()">}
+       @else{<span [attr.title]="week.amounts[member.id]===null?'Not entered':null">{{format(week.amounts[member.id])}}</span>}
+      </td>}
+      <td class="total-column">{{format(totals().rows[week.id])}}</td>
+     </tr>}
+    </tbody>
+    <tfoot>
+     <tr class="balance-row"><th scope="row" class="date-column">باقیمانده</th>@for(member of ledger().members;track member.id){<td [class.negative]="totals().members[member.id].balance<0">{{format(totals().members[member.id].balance)}}</td>}<td class="total-column">{{format(totals().balance)}}</td></tr>
+     <tr class="paid-row"><th scope="row" class="date-column">پرداختی</th>@for(member of ledger().members;track member.id){<td>@if(draft()){<input type="number" min="0" max="1000000000" step="0.01" placeholder="—" [attr.aria-label]="'Paid — '+member.name" [ngModel]="member.paid" (ngModelChange)="setPaid(member.id,$event)" [disabled]="!store.canEdit() || store.saving()">}@else{<span>{{format(member.paid)}}</span>}</td>}<td class="total-column">{{format(totals().paid)}}</td></tr>
+    </tfoot>
+   </table>
+  </div>
+  <p class="panel-foot">Balance = paid − charges across all weeks. Positive balances are credit; negative balances are amounts owed. Dates retain the spreadsheet’s labels. Scroll sideways to see every player.</p>
+ </section>
+ <p class="payment-source">Starting entries imported from سالن.xlsx. Changes are included in your season backup. Payment names can be managed separately from match lineups.</p>
+} @else {<p class="alert" role="status">Loading the shared payment table…</p>}

@@ -3,8 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Data, demoData, Match, Player, playerStats, POSITIONS, Stats, today, validateData } from './domain';
 import { Store } from './store';
-type Page = 'Overview' | 'Matches' | 'Players' | 'Insights' | 'Backup & data';
-@Component({selector:'app-root',standalone:true,imports:[CommonModule,FormsModule],templateUrl:'./app.html'})
+import {PaymentsPage} from './payments-page';
+type Page = 'Overview' | 'Matches' | 'Players' | 'Insights' | 'Payments' | 'Backup & data';
+@Component({selector:'app-root',standalone:true,imports:[CommonModule,FormsModule,PaymentsPage],templateUrl:'./app.html'})
 export class App {
  readonly store = inject(Store);
  readonly data = this.store.data;
@@ -12,9 +13,9 @@ export class App {
  readonly matches = computed(() => [...this.data().matches].sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)));
  readonly totalGoals = computed(() => this.data().matches.reduce((n,m) => n+m.a.score+m.b.score,0));
  readonly leaders = computed(() => [...this.stats()].filter(p=>p.played).sort((a,b)=>b.wins-a.wins || b.goals-a.goals).slice(0,5));
- get pages():Page[]{return this.store.canEdit()?['Overview','Matches','Players','Insights','Backup & data']:['Overview','Matches','Players','Insights'];}
+ get pages():Page[]{return this.store.canEdit()?['Overview','Matches','Players','Insights','Payments','Backup & data']:['Overview','Matches','Players','Insights','Payments'];}
  readonly positions = POSITIONS;
- page = signal<Page>('Overview');
+ page = signal<Page>(location.hash==='#payments'?'Payments':'Overview');
  search = ''; matchSearch = ''; sort = 'wins'; minGames = 1; showArchived = false;
  notice = signal(''); formError = ''; modal: 'player'|'match'|'profile'|'matchView'|'login'|null = null;
  adminEmail='rashed.bayani@gmail.com';adminPassword='';loginMessage='';newPassword='';repeatPassword='';
@@ -25,7 +26,7 @@ export class App {
  @ViewChild('dialog') dialog!: ElementRef<HTMLDialogElement>;
  blankPlayer(): Player { return {id:crypto.randomUUID(),name:'',position:'Any position',notes:'',active:true}; }
  blankMatch(): Match { return {id:crypto.randomUUID(),date:today(),venue:'',notes:'',a:{name:'Team Green',score:0,players:[]},b:{name:'Team Orange',score:0,players:[]}}; }
- navigate(page: Page) { this.page.set(page); this.search = ''; this.notice.set(''); window.scrollTo({top:0}); }
+ navigate(page: Page) { this.page.set(page); history.replaceState(null,'',location.pathname+location.search+(page==='Payments'?'#payments':'')); this.search = ''; this.notice.set(''); window.scrollTo({top:0}); }
  initials(name: string) { return name.trim().split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase(); }
  name(id: string) { return this.data().players.find(p=>p.id===id)?.name ?? 'Unknown player'; }
  get filteredPlayers() { return this.stats().filter(s=>(this.showArchived || s.player.active) && s.player.name.toLowerCase().includes(this.search.toLowerCase())); }
@@ -77,7 +78,7 @@ export class App {
  }
  async restore() {if(this.pendingImport && await this.store.save(this.pendingImport,true,this.importRevision)){this.pendingImport=null;this.notice.set('Backup restored successfully.');}}
  async loadDemo() {if(this.store.mode()==='local' && !this.data().players.length && !this.data().matches.length && await this.store.save(demoData()))this.notice.set('Sample season loaded. You can remove it in Backup & data.');}
- async clearDemo() {if(!this.data().players.every(p=>p.id.startsWith('demo-')) || !this.data().matches.every(m=>m.id.startsWith('demo-'))) {this.notice.set('Your own records are present, so sample data cannot be cleared automatically.');return;}if(confirm('Remove the sample season?') && await this.store.save({version:1,players:[],matches:[]}))this.notice.set('Sample season removed. Ready for your players.');}
+ async clearDemo() {if(!this.data().players.every(p=>p.id.startsWith('demo-')) || !this.data().matches.every(m=>m.id.startsWith('demo-'))) {this.notice.set('Your own records are present, so sample data cannot be cleared automatically.');return;}if(confirm('Remove the sample season?') && await this.store.save({...this.data(),version:1,players:[],matches:[]}))this.notice.set('Sample season removed. Ready for your players.');}
  async login(){const password=this.adminPassword;this.adminPassword='';if(await this.store.signIn(this.adminEmail,password)){this.close();this.notice.set('You are signed in as administrator.');}else this.formError=this.store.error();}
  async forgotPassword(){this.formError='';this.loginMessage='';if(await this.store.resetPassword(this.adminEmail))this.loginMessage='Check your email for a password reset link.';else this.formError=this.store.error();}
  async changePassword(){if(this.newPassword!==this.repeatPassword){this.notice.set('The passwords do not match.');return;}if(await this.store.updatePassword(this.newPassword)){this.newPassword='';this.repeatPassword='';this.notice.set('Password saved. You are ready to record matches.');}}
